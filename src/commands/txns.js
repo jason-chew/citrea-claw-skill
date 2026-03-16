@@ -23,7 +23,7 @@ const ROUTERS = {
 }
 
 const TOKEN_MAP = {
-  '0x8d82c4e3c936c7b5724a382a9c5a4e6eb7ab6d5d': { symbol: 'ctUSD',  decimals: 18 },
+  '0x8d82c4e3c936c7b5724a382a9c5a4e6eb7ab6d5d': { symbol: 'ctUSD',  decimals: 6 },
   '0x3100000000000000000000000000000000000006': { symbol: 'wcBTC',  decimals: 18 },
   '0xe045e6c36cf77faa2cfb54466d71a3aef7bbe839': { symbol: 'USDC.e', decimals: 6  },
   '0x9f3096bac87e7f03dc09b0b416eb0df837304dc4': { symbol: 'USDT.e', decimals: 6  },
