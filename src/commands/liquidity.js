@@ -31,6 +31,7 @@ const TOKEN_REGISTRY = {
   'usdt':   { symbol: 'USDT.e', address: '0x9f3096Bac87e7F03DC09b0B416eB0DF837304dc4', decimals: 6  },
   'wbtc.e': { symbol: 'WBTC.e', address: '0xDF240DC08B0FdaD1d93b74d5048871232f6BEA3d', decimals: 8  },
   'wbtc':   { symbol: 'WBTC.e', address: '0xDF240DC08B0FdaD1d93b74d5048871232f6BEA3d', decimals: 8  },
+  'jusd':   { symbol: 'JUSD',   address: '0x0987D3720D38847ac6dBB9D025B9dE892a3CA35C', decimals: 18 },
 }
 
 const ALL_TOKENS = [
@@ -39,7 +40,11 @@ const ALL_TOKENS = [
   { symbol: 'USDC.e', address: '0xE045e6c36cF77FAA2CfB54466D71A3aEF7bbE839', decimals: 6  },
   { symbol: 'USDT.e', address: '0x9f3096Bac87e7F03DC09b0B416eB0DF837304dc4', decimals: 6  },
   { symbol: 'WBTC.e', address: '0xDF240DC08B0FdaD1d93b74d5048871232f6BEA3d', decimals: 8  },
+  { symbol: 'JUSD',   address: '0x0987D3720D38847ac6dBB9D025B9dE892a3CA35C', decimals: 18 },
 ]
+
+const BTC_TOKENS    = ['wcBTC', 'WBTC.e', 'cBTC']
+const STABLE_TOKENS = ['USDC.e', 'USDT.e', 'ctUSD', 'JUSD']
 
 // ─── ABIs ─────────────────────────────────────────────────────────────────────
 
@@ -187,6 +192,26 @@ function formatAmount(amount, decimals) {
   return n.toLocaleString('en-US', { maximumFractionDigits: 2 })
 }
 
+// Pool depth based on USD value of reserves
+function poolDepthLabel(liquidity, balance0Raw, balance1Raw, dec0, dec1, sym0, sym1, prices) {
+  if (liquidity === 0n) return '⚠️  No active liquidity in current price range'
+
+  const b0       = parseFloat(formatUnits(balance0Raw, dec0))
+  const b1       = parseFloat(formatUnits(balance1Raw, dec1))
+  const btcPrice = prices?.BTC  || 70000
+  const stPrice  = prices?.USDC || 1
+
+  const price0   = BTC_TOKENS.includes(sym0) ? btcPrice : STABLE_TOKENS.includes(sym0) ? stPrice : 0
+  const price1   = BTC_TOKENS.includes(sym1) ? btcPrice : STABLE_TOKENS.includes(sym1) ? stPrice : 0
+  const totalUSD = (b0 * price0) + (b1 * price1)
+
+  if (totalUSD === 0)    return '⚠️  Empty pool'
+  if (totalUSD < 100)    return `⚠️  Very low — thinly traded (${formatUSD(totalUSD)})`
+  if (totalUSD < 10000)  return `🟡 Low liquidity (${formatUSD(totalUSD)})`
+  if (totalUSD < 100000) return `🟢 Moderate liquidity (${formatUSD(totalUSD)})`
+  return                        `🟢 Deep — well funded pool (${formatUSD(totalUSD)})`
+}
+
 // ─── Pool Lookup ──────────────────────────────────────────────────────────────
 
 async function findPool(tokenA, tokenB, fee = null) {
@@ -224,7 +249,7 @@ async function findPool(tokenA, tokenB, fee = null) {
 
 // ─── Pool TVL ─────────────────────────────────────────────────────────────────
 
-async function getPoolTVL(poolAddress, poolType = 'univ3', dexName = '') {
+async function getPoolTVL(poolAddress, poolType = 'univ3', dexName = '', prices = null) {
   try {
     const abi = poolType === 'algebra' ? ALGEBRA_POOL_ABI : POOL_ABI
 
@@ -270,9 +295,16 @@ async function getPoolTVL(poolAddress, poolType = 'univ3', dexName = '') {
       }),
     ])
 
-    const liquidityStatus = liquidity === 0n
-      ? '0 (no active liquidity in current price range)'
-      : liquidity.toLocaleString()
+    const depthLabel = poolDepthLabel(
+      liquidity,
+      balance0Raw,
+      balance1Raw,
+      token0.decimals,
+      token1.decimals,
+      token0.symbol,
+      token1.symbol,
+      prices
+    )
 
     const lines = [
       `💧 Pool TVL${dexName ? ` — ${dexName}` : ''}`,
@@ -287,8 +319,8 @@ async function getPoolTVL(poolAddress, poolType = 'univ3', dexName = '') {
       `   ${token0.symbol.padEnd(8)}  ${formatAmount(balance0Raw, token0.decimals)}`,
       `   ${token1.symbol.padEnd(8)}  ${formatAmount(balance1Raw, token1.decimals)}`,
       ``,
-      `📈 Active Liquidity`,
-      `   ${liquidityStatus}`,
+      `📈 Pool Depth`,
+      `   ${depthLabel}`,
       ``,
       `🔍 ${EXPLORER_ADDR}/${poolAddress}`,
     ]
@@ -307,7 +339,8 @@ async function poolLiquidity(args) {
   // Usage 1: direct pool address
   if (args[0]?.startsWith('0x') && args[0].length === 42) {
     const poolType = args[1] || 'univ3'
-    await getPoolTVL(args[0], poolType)
+    const prices   = await fetchRedStonePrices()
+    await getPoolTVL(args[0], poolType, '', prices)
     return
   }
 
@@ -335,7 +368,10 @@ async function poolLiquidity(args) {
     const fee = args[2] ? parseInt(args[2]) : null
     console.log(`\n🔍 Looking up ${resolvedA.symbol} / ${resolvedB.symbol} pools...\n`)
 
-    const pools = await findPool(resolvedA.address, resolvedB.address, fee)
+    const [pools, prices] = await Promise.all([
+      findPool(resolvedA.address, resolvedB.address, fee),
+      fetchRedStonePrices(),
+    ])
 
     if (pools.length === 0) {
       console.log(`❌ No pool found for ${resolvedA.symbol} / ${resolvedB.symbol}.`)
@@ -345,11 +381,10 @@ async function poolLiquidity(args) {
 
     for (const { dex, pool, type } of pools) {
       console.log(`🔶 ${dex}`)
-      await getPoolTVL(pool, type, dex)
+      await getPoolTVL(pool, type, dex, prices)
       console.log()
     }
 
-    // Check for arb opportunity across the pools found
     const arbSummary = await getArbSummaryForPair(resolvedA.symbol, resolvedB.symbol)
     if (arbSummary) console.log(arbSummary)
     return
@@ -373,18 +408,18 @@ async function poolLiquidity(args) {
       t => t.address.toLowerCase() !== resolved.address.toLowerCase()
     )
 
-    let foundAny = false
+    const prices   = await fetchRedStonePrices()
+    let foundAny   = false
 
     for (const other of otherTokens) {
       const pools = await findPool(resolved.address, other.address, null)
       for (const { dex, pool, type } of pools) {
         console.log(`🔶 ${dex} — ${resolved.symbol} / ${other.symbol}`)
-        await getPoolTVL(pool, type, dex)
+        await getPoolTVL(pool, type, dex, prices)
         console.log()
         foundAny = true
       }
 
-      // Check for arb on this pair
       if (foundAny) {
         const arbSummary = await getArbSummaryForPair(resolved.symbol, other.symbol)
         if (arbSummary) console.log(arbSummary)
@@ -405,11 +440,10 @@ Usage:
   pool:liquidity <tokenA> <tokenB>          Look up pool by token pair
   pool:liquidity <token>                    Find all pools containing a token
 
-Token names accepted: ctUSD, wcBTC, USDC.e, USDT.e, WBTC.e
+Token names accepted: ctUSD, wcBTC, USDC.e, USDT.e, WBTC.e, JUSD
 Or use full 0x addresses.
 
 Examples:
-  node index.js pool:liquidity 0xB3dA7635d23610B8C061f14304Be05e93F17B49E
   node index.js pool:liquidity ctUSD wcBTC
   node index.js pool:liquidity ctUSD wcBTC 500
   node index.js pool:liquidity ctUSD
