@@ -29,6 +29,7 @@ const TOKEN_MAP = {
   '0x9f3096bac87e7f03dc09b0b416eb0df837304dc4': { symbol: 'USDT.e', decimals: 6  },
   '0xdf240dc08b0fdad1d93b74d5048871232f6bea3d': { symbol: 'WBTC.e', decimals: 8  },
   '0x0987d3720d38847ac6dbb9d025b9de892a3ca35c': { symbol: 'JUSD',   decimals: 18 },
+  '0xac8c1aeb584765db16ac3e08d4736cfce198589b': { symbol: 'GUSD',   decimals: 18 },
 }
 
 // ERC20 Transfer event

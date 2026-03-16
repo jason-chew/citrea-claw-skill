@@ -52,6 +52,7 @@ const TOKEN_PRICE_MAP = {
   'USDT.e': 'USDT',
   ctUSD:    'USDC',
   JUSD:     'USDC',
+  GUSD:     'USDC',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

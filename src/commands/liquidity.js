@@ -32,6 +32,7 @@ const TOKEN_REGISTRY = {
   'wbtc.e': { symbol: 'WBTC.e', address: '0xDF240DC08B0FdaD1d93b74d5048871232f6BEA3d', decimals: 8  },
   'wbtc':   { symbol: 'WBTC.e', address: '0xDF240DC08B0FdaD1d93b74d5048871232f6BEA3d', decimals: 8  },
   'jusd':   { symbol: 'JUSD',   address: '0x0987D3720D38847ac6dBB9D025B9dE892a3CA35C', decimals: 18 },
+  'gusd':   { symbol: 'GUSD',   address: '0xAC8c1AEB584765DB16ac3e08D4736CFcE198589B', decimals: 18 },
 }
 
 const ALL_TOKENS = [
@@ -41,10 +42,11 @@ const ALL_TOKENS = [
   { symbol: 'USDT.e', address: '0x9f3096Bac87e7F03DC09b0B416eB0DF837304dc4', decimals: 6  },
   { symbol: 'WBTC.e', address: '0xDF240DC08B0FdaD1d93b74d5048871232f6BEA3d', decimals: 8  },
   { symbol: 'JUSD',   address: '0x0987D3720D38847ac6dBB9D025B9dE892a3CA35C', decimals: 18 },
+  { symbol: 'GUSD',   address: '0xAC8c1AEB584765DB16ac3e08D4736CFcE198589B', decimals: 18 },
 ]
 
 const BTC_TOKENS    = ['wcBTC', 'WBTC.e', 'cBTC']
-const STABLE_TOKENS = ['USDC.e', 'USDT.e', 'ctUSD', 'JUSD']
+const STABLE_TOKENS = ['USDC.e', 'USDT.e', 'ctUSD', 'JUSD', 'GUSD']
 
 // ─── ABIs ─────────────────────────────────────────────────────────────────────
 

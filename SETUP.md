@@ -125,6 +125,7 @@ In your `.env`, set `ARB_ALERT_THRESHOLD_BPS` to control sensitivity:
 | USDT.e  | Bridged USDT (LayerZero)            |
 | WBTC.e  | Bridged Wrapped Bitcoin (LayerZero) |
 | JUSD    | BTC-backed stablecoin (JuiceDollar) |
+| GUSD    | Generic USD (generic.money)         |
 
 ## Supported DEXes
 
